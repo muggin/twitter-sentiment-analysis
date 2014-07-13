@@ -1,17 +1,16 @@
 import sys
+import simple_sentiment_analyzer as ssa
 
-def hw():
-    print 'Hello, world!'
-
-def lines(fp):
-    print str(len(fp.readlines()))
+default_word_sentiment_file = "/Users/Wojtek/Documents/Projekty/Twitter_Sentiment_Analysis/AFINN-111.txt"
+default_tweet_file = "/Users/Wojtek/Documents/Projekty/Twitter_Sentiment_Analysis/tweets.txt"
 
 def main():
-    sent_file = open(sys.argv[1])
-    tweet_file = open(sys.argv[2])
-    hw()
-    lines(sent_file)
-    lines(tweet_file)
+    sent_file = sys.argv[1]
+    tweet_file = sys.argv[2]
+    analyzer = ssa.SentimentAnalyzer(True)
+    analyzer.build_dictionary(default_word_sentiment_file)
+    analyzer.analyze_tweets(default_tweet_file)
+    analyzer.append_unknown()
 
 if __name__ == '__main__':
     main()

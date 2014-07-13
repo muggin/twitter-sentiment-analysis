@@ -1,17 +1,13 @@
 import sys
-
-def hw():
-    print 'Hello, world!'
-
-def lines(fp):
-    print str(len(fp.readlines()))
+import simple_sentiment_analyzer as ssa
 
 def main():
-    sent_file = open(sys.argv[1])
-    tweet_file = open(sys.argv[2])
-    hw()
-    lines(sent_file)
-    lines(tweet_file)
+    sent_file = sys.argv[1]
+    tweet_file = sys.argv[2]
+    analyzer = ssa.SentimentAnalyzer(True)
+    analyzer.build_dictionary(sent_file)
+    analyzer.analyze_tweets(tweet_file)
+    analyzer.append_unknown()
 
 if __name__ == '__main__':
     main()
