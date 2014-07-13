@@ -1,21 +1,21 @@
 __author__ = 'WojteK'
 import re
 import json
+import codecs
 
 TWEET_TEXT_FIELD = 'text'
+TWEET_STATUSES_FIELD = 'statuses'
 USERNAME_REGEX = '^\@\S+$'
 HASHTAG_REGEX = '^\#\S+$'
 URL_REGEX = '^(?:https?:\/\/)?(?:[w]{3}\.)?(?:[^\.\s\d]{2,12})\.(?:[a-z]{2,4})(?:\/[a-z\.]{1,12})*'
 
-
-
 class SentimentAnalyzer:
-'''
-Simple Tweet Sentiment Analyzer.
-Handles tri/bi/unigram sentiment dictionaries.
-Performs basic tweet cleaning (removing urls, usernames, hashtags).
-Allows evaluation of unknown words and appending them to the unigram dictionary.
-'''
+    '''
+    Simple Tweet Sentiment Analyzer.
+    Handles tri/bi/unigram sentiment dictionaries.
+    Performs basic tweet cleaning (removing urls, usernames, hashtags).
+    Allows evaluation of unknown words and appending them to the unigram dictionary.
+    '''
 
     def __init__(self, deduce_sentiment = False):
         '''
@@ -31,6 +31,8 @@ Allows evaluation of unknown words and appending them to the unigram dictionary.
     def __score_trigrams(self, tweet_split):
         '''
         Find and score trigrams in tweet. Replace used words with empty strings.
+        :param tweet_split: tokenized tweet text
+        :return: total score based on trigrams found in tweet
         '''
         score = 0
         if len(tweet_split) > 2:
@@ -45,6 +47,8 @@ Allows evaluation of unknown words and appending them to the unigram dictionary.
     def __score_bigrams(self, tweet_split):
         '''
         Find and score bigrams in tweet. Replace used words with empty strings.
+        :param tweet_split: tokenized tweet text
+        :return: total score based on bigrams found in tweet
         '''
         score = 0
         if len(tweet_split) > 1:
@@ -59,6 +63,8 @@ Allows evaluation of unknown words and appending them to the unigram dictionary.
     def __score_unigrams(self, tweet_split):
         '''
         Find and score unigrams in tweet. Replace used words with empty strings.
+        :param tweet_split: tokenized tweet text
+        :return: total score based on unigrams found in tweet
         '''
         score = 0
         if len(tweet_split) > 0:
@@ -73,6 +79,8 @@ Allows evaluation of unknown words and appending them to the unigram dictionary.
     def __find_unknown(self, tweet_split):
         '''
         Find unknown words in tweet.
+        :param tweet_split: tokenized tweet text
+        :return: list of unknown words used in tweet (unknown as in not in unigram dictionary)
         '''
         unknown_list = []
         for word in tweet_split:
@@ -85,6 +93,9 @@ Allows evaluation of unknown words and appending them to the unigram dictionary.
         '''
         Append a list of unknown words to the unknown_dict, with given sentiment.
         unknown_dict structure: <key>:<(sentiment, occurrence_count)>
+        :param unknown_words: list of unknown words from one tweet
+        :param sentiment: sentiment value associated with these words
+        :return: None
         '''
         for word in unknown_words:
             if word in self.unknown_dict:
@@ -97,6 +108,8 @@ Allows evaluation of unknown words and appending them to the unigram dictionary.
     def __clean_tweet(self, tweet_split):
         '''
         Clean tweet from urls, usernames, hashtags, etc.
+        :param tweet_split: tokenized tweet text
+        :return: None
         '''
         cleaning_list = []
         cleaning_list += [word for word in tweet_split if re.match(URL_REGEX, word)]
@@ -109,18 +122,20 @@ Allows evaluation of unknown words and appending them to the unigram dictionary.
     def append_unknown(self):
         '''
         Append unknown_dict to unigram_dict.
+        :return: None
         '''
         for word in self.unknown_dict:
             entry = self.unknown_dict[word]
-            value = self.unigram_dict[word] = entry[0]/float(entry[1])
-            print word, ' ', value
+            self.unigram_dict[word] = entry[0]/entry[1]
 
 
     def build_dictionary(self, sentiment_file_path):
         '''
         Build unigram_dict and bigram_dict based on sentiment file passed as argument.
+        :param sentiment_file_path: sentiment file path
+        :return: None
         '''
-        with open(sentiment_file_path, 'r') as sentiment_file:
+        with codecs.open(sentiment_file_path, 'r', 'utf-8') as sentiment_file:
             for line in sentiment_file:
                 term, sentiment = line.strip('\n').split('\t')
                 key_split = term.split(' ')
@@ -139,6 +154,8 @@ Allows evaluation of unknown words and appending them to the unigram dictionary.
     def evaluate_tweet(self, tweet):
         '''
         Evaluate single tweet.
+        :param tweet: tweet text
+        :return: tweets total sentiment score
         '''
         score = 0
         tweet_split = tweet.split(' ')
@@ -155,9 +172,13 @@ Allows evaluation of unknown words and appending them to the unigram dictionary.
     def analyze_tweets(self, tweet_file_path):
         '''
         Analyze and evaluate all tweets from file passed as argument.
+        :param tweet_file_path: tweet file path
+        :return: None
         '''
-        with open(tweet_file_path, 'r') as tweet_file:
-            for tweet in tweet_file:
-                tweet_struct = json.loads(tweet)
-                if TWEET_TEXT_FIELD in tweet_struct:
-                    self.evaluate_tweet(tweet_struct[TWEET_TEXT_FIELD])
+        with codecs.open(tweet_file_path, 'r', 'utf-8') as tweet_file:
+            for line in tweet_file:
+                tweets_struct = json.loads(line)
+                for tweet in tweets_struct[TWEET_STATUSES_FIELD]:
+                    if TWEET_TEXT_FIELD in tweet:
+                        print '* ', tweet[TWEET_TEXT_FIELD],'\n'
+                        self.evaluate_tweet(tweet[TWEET_TEXT_FIELD])
