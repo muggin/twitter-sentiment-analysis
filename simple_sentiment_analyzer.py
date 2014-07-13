@@ -9,6 +9,7 @@ USERNAME_REGEX = '^\@\S+$'
 HASHTAG_REGEX = '^\#\S+$'
 URL_REGEX = '^(?:https?:\/\/)?(?:[w]{3}\.)?(?:[^\.\s\d]{2,12})\.(?:[a-z]{2,4})(?:\/[a-z\.]{1,12})*'
 
+
 class SentimentAnalyzer:
     '''
     Simple Tweet Sentiment Analyzer.
@@ -17,16 +18,17 @@ class SentimentAnalyzer:
     Allows evaluation of unknown words and appending them to the unigram dictionary.
     '''
 
-    def __init__(self, deduce_sentiment = False):
+    def __init__(self, deduce_sentiment=False):
         '''
         Class initializer.
+        :type deduce_sentiment: object
+        :param deduce_sentiment: if program should deduce sentiment for unknown words
         '''
         self.deduce_sentiment = deduce_sentiment
         self.unigram_dict = {}
         self.bigram_dict = {}
         self.trigram_dict = {}
         self.unknown_dict = {}
-
 
     def __score_trigrams(self, tweet_split):
         '''
@@ -43,7 +45,6 @@ class SentimentAnalyzer:
                     tweet_split[index] = tweet_split[index + 1] = tweet_split[index + 2] = ''
         return score
 
-
     def __score_bigrams(self, tweet_split):
         '''
         Find and score bigrams in tweet. Replace used words with empty strings.
@@ -58,7 +59,6 @@ class SentimentAnalyzer:
                     score += self.bigram_dict[dict_key]
                     tweet_split[index] = tweet_split[index + 1] = ''
         return score
-
 
     def __score_unigrams(self, tweet_split):
         '''
@@ -75,7 +75,6 @@ class SentimentAnalyzer:
                     tweet_split[index] = ''
         return score
 
-
     def __find_unknown(self, tweet_split):
         '''
         Find unknown words in tweet.
@@ -87,7 +86,6 @@ class SentimentAnalyzer:
             if word not in self.unigram_dict and word != '':
                 unknown_list.append(word)
         return unknown_list
-
 
     def __append_to_unknown(self, unknown_words, sentiment):
         '''
@@ -104,7 +102,6 @@ class SentimentAnalyzer:
             else:
                 self.unknown_dict[word] = sentiment, 1
 
-
     def __clean_tweet(self, tweet_split):
         '''
         Clean tweet from urls, usernames, hashtags, etc.
@@ -118,7 +115,6 @@ class SentimentAnalyzer:
         for word in cleaning_list:
             tweet_split.remove(word)
 
-
     def append_unknown(self):
         '''
         Append unknown_dict to unigram_dict.
@@ -126,8 +122,7 @@ class SentimentAnalyzer:
         '''
         for word in self.unknown_dict:
             entry = self.unknown_dict[word]
-            self.unigram_dict[word] = entry[0]/entry[1]
-
+            self.unigram_dict[word] = entry[0] / entry[1]
 
     def build_dictionary(self, sentiment_file_path):
         '''
@@ -150,7 +145,6 @@ class SentimentAnalyzer:
                 else:
                     print key_split, ' - invalid dictionary key format!'
 
-
     def evaluate_tweet(self, tweet):
         '''
         Evaluate single tweet.
@@ -168,11 +162,11 @@ class SentimentAnalyzer:
             self.__append_to_unknown(unknown_list, score)
         return score
 
-
-    def analyze_tweets(self, tweet_file_path):
+    def analyze_tweets(self, tweet_file_path, print_output=True):
         '''
         Analyze and evaluate all tweets from file passed as argument.
         :param tweet_file_path: tweet file path
+        :param print_output: if program should print work effects
         :return: None
         '''
         with codecs.open(tweet_file_path, 'r', 'utf-8') as tweet_file:
@@ -180,5 +174,7 @@ class SentimentAnalyzer:
                 tweets_struct = json.loads(line)
                 for tweet in tweets_struct[TWEET_STATUSES_FIELD]:
                     if TWEET_TEXT_FIELD in tweet:
-                        print '* ', tweet[TWEET_TEXT_FIELD],'\n'
-                        self.evaluate_tweet(tweet[TWEET_TEXT_FIELD])
+                        tweet_score = self.evaluate_tweet(tweet[TWEET_TEXT_FIELD])
+                        if print_output:
+                            print '* ', tweet[TWEET_TEXT_FIELD], '\n'
+                            print 'Tweet score: ', tweet_score, '\n'
