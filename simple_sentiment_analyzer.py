@@ -149,7 +149,7 @@ class SentimentAnalyzer:
 
     def build_dictionary(self, sentiment_file_path):
         '''
-        Build unigram_dict and bigram_dict based on sentiment file passed as argument.
+        Build uni/bi/trigram_dict based on sentiment file passed as argument.
         :param sentiment_file_path: sentiment file path
         :return: None
         '''
@@ -165,6 +165,21 @@ class SentimentAnalyzer:
                 elif len(key_split) == 3:
                     dict_key = key_split[0], key_split[1], key_split[2]
                     self.trigram_dict[dict_key] = int(sentiment)
+                else:
+                    print key_split, ' - invalid dictionary key format!'
+
+    def build_hashtag_dictionary(self, hashtag_file_path):
+        '''
+        Build hashtag_dict based on sentiment file passed as argument.
+        :param hashtag_file_path: hashtag file path
+        :return: None
+        '''
+        with codecs.open(hashtag_file_path, 'r', 'utf-8') as sentiment_file:
+            for line in sentiment_file:
+                term, sentiment = line.strip('\n').split('\t')
+                key_split = term.split(' ')
+                if len(key_split) == 1:
+                    self.hashtag_dict[term] = int(sentiment)
                 else:
                     print key_split, ' - invalid dictionary key format!'
 
