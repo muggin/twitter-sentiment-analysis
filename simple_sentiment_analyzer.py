@@ -3,6 +3,7 @@ import re
 import json
 import codecs
 
+# Debug Twitter structs FORFUCKSSAKE!
 TWEET_TEXT_FIELD = 'text'
 TWEET_STATUSES_FIELD = 'statuses'
 USERNAME_REGEX = '^\@\S+$'
@@ -12,7 +13,7 @@ URL_REGEX = '^(?:https?:\/\/)?(?:[w]{3}\.)?(?:[^\.\s\d]{2,12})\.(?:[a-z]{2,4})(?
 
 class SentimentAnalyzer:
     '''
-    Simple Tweet Sentiment Analyzer.
+    Simple Tweet Sentiment Analyzer, based on ngram token sentiment.
     Handles tri/bi/unigram sentiment dictionaries.
     Performs basic tweet cleaning (removing urls, usernames, hashtags).
     Allows evaluation of unknown words and appending them to the unigram dictionary.
@@ -28,6 +29,7 @@ class SentimentAnalyzer:
         self.unigram_dict = {}
         self.bigram_dict = {}
         self.trigram_dict = {}
+        self.hashtag_dict = {}
         self.unknown_dict = {}
 
     def __score_trigrams(self, tweet_split):
@@ -36,8 +38,9 @@ class SentimentAnalyzer:
         :param tweet_split: tokenized tweet text
         :return: total score based on trigrams found in tweet
         '''
+        assert isinstance(tweet_split, list)
         score = 0
-        if len(tweet_split) > 2:
+        if (len(self.trigram_dict) > 0) and (len(tweet_split) > 2):
             for index in xrange(0, len(tweet_split) - 2):
                 dict_key = tweet_split[index], tweet_split[index + 1], tweet_split[index + 2]
                 if dict_key in self.trigram_dict:
@@ -51,8 +54,9 @@ class SentimentAnalyzer:
         :param tweet_split: tokenized tweet text
         :return: total score based on bigrams found in tweet
         '''
+        assert isinstance(tweet_split, list)
         score = 0
-        if len(tweet_split) > 1:
+        if (len(self.bigram_dict) > 0) and (len(tweet_split) > 1):
             for index in xrange(0, len(tweet_split) - 1):
                 dict_key = tweet_split[index], tweet_split[index + 1]
                 if dict_key in self.bigram_dict:
@@ -66,13 +70,28 @@ class SentimentAnalyzer:
         :param tweet_split: tokenized tweet text
         :return: total score based on unigrams found in tweet
         '''
+        assert isinstance(tweet_split, list)
         score = 0
-        if len(tweet_split) > 0:
+        if (len(self.unigram_dict) > 0) and (len(tweet_split) > 0):
             for index in xrange(0, len(tweet_split)):
                 dict_key = tweet_split[index]
                 if dict_key in self.unigram_dict:
                     score += self.unigram_dict[dict_key]
                     tweet_split[index] = ''
+        return score
+
+    def __score_hashtags(self, hashtags):
+        '''
+        Score all hashtags found in tweet.
+        :param hashtags: list of hasthags found in tweet
+        :return: total score based on hashtags found in tweet
+        '''
+        assert isinstance(hashtags, list)
+        score = 0
+        if (len(self.hashtag_dict) > 0) and (len(hashtags) > 0):
+            for tag in hashtags:
+                if tag in self.hashtag_dict:
+                    score += self.hashtag_dict[tag]
         return score
 
     def __find_unknown(self, tweet_split):
@@ -81,6 +100,7 @@ class SentimentAnalyzer:
         :param tweet_split: tokenized tweet text
         :return: list of unknown words used in tweet (unknown as in not in unigram dictionary)
         '''
+        assert isinstance(tweet_split, list)
         unknown_list = []
         for word in tweet_split:
             if word not in self.unigram_dict and word != '':
@@ -95,6 +115,7 @@ class SentimentAnalyzer:
         :param sentiment: sentiment value associated with these words
         :return: None
         '''
+        assert isinstance(unknown_words, list)
         for word in unknown_words:
             if word in self.unknown_dict:
                 entry = self.unknown_dict[word]
@@ -106,14 +127,16 @@ class SentimentAnalyzer:
         '''
         Clean tweet from urls, usernames, hashtags, etc.
         :param tweet_split: tokenized tweet text
-        :return: None
+        :return: tuple containing list of found hashtags, urls, usernames
         '''
-        cleaning_list = []
-        cleaning_list += [word for word in tweet_split if re.match(URL_REGEX, word)]
-        cleaning_list += [word for word in tweet_split if re.match(USERNAME_REGEX, word)]
-        cleaning_list += [word for word in tweet_split if re.match(HASHTAG_REGEX, word)]
+        assert isinstance(tweet_split, list)
+        hashtags = [word for word in tweet_split if re.match(HASHTAG_REGEX, word)]
+        urls = [word for word in tweet_split if re.match(URL_REGEX, word)]
+        usernames = [word for word in tweet_split if re.match(USERNAME_REGEX, word)]
+        cleaning_list = hashtags + urls + usernames
         for word in cleaning_list:
             tweet_split.remove(word)
+        return urls, usernames, hashtags
 
     def append_unknown(self):
         '''
@@ -153,10 +176,11 @@ class SentimentAnalyzer:
         '''
         score = 0
         tweet_split = tweet.split(' ')
-        self.__clean_tweet(tweet_split)
+        tags, urls, usernames = self.__clean_tweet(tweet_split)
         score += self.__score_trigrams(tweet_split)
         score += self.__score_bigrams(tweet_split)
         score += self.__score_unigrams(tweet_split)
+        score += self.__score_hashtags(tags)
         if self.deduce_sentiment:
             unknown_list = self.__find_unknown(tweet_split)
             self.__append_to_unknown(unknown_list, score)
